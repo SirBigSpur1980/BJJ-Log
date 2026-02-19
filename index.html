@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BJJ Log</title>
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  background: #121212;
+  color: #fff;
+}
+header {
+  padding: 20px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  background: #1f1f1f;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.container { padding: 15px; }
+.search { width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 15px; font-size: 16px; }
+.entry {
+  background: #1f2937;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 15px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.entry-info { flex:1; }
+.date { font-size: 12px; color: #94a3b8; }
+.tag { display: inline-block; padding: 4px 10px; border-radius: 10px; font-size: 12px; margin-top: 8px; font-weight: bold; }
+.tag.Guard { background: #3b82f6; }
+.tag.Passing { background: #10b981; }
+.tag.Submissions { background: #ef4444; }
+.tag.Escapes { background: #f97316; }
+.tag.Other { background: #6b7280; }
+.delete-btn, .edit-btn { border: none; color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-left: 5px; font-size: 12px; }
+.delete-btn { background: #ef4444; }
+.edit-btn { background: #3b82f6; }
+
+.add-btn {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 60px; height: 60px;
+  font-size: 30px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* Modal */
+.modal { display: none; position: fixed; z-index: 20; left:0; top:0; width:100%; height:100%; backdrop-filter: blur(5px); background-color: rgba(0,0,0,0.5); }
+.modal-content { background:#1f2937; margin:100px auto; padding:20px; border-radius:15px; width:90%; max-width:400px; }
+.modal-content textarea, .modal-content select, .modal-content button { width:100%; padding:12px; border-radius:12px; border:none; margin-bottom:12px; font-size:16px; }
+.modal-content button { width:100%; padding:14px; border-radius:12px; border:none; font-weight:bold; font-size:16px; background:#22c55e; color:white; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<header>BJJ Training Log</header>
+
+<div class="container" id="listView">
+  <input class="search" id="search" placeholder="Search or filter..." oninput="render()">
+  <div id="log"></div>
+</div>
+
+<button class="add-btn" onclick="openModal()">+</button>
+
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <select id="tag">
+      <option>Guard</option>
+      <option>Passing</option>
+      <option>Submissions</option>
+      <option>Escapes</option>
+      <option>Other</option>
+    </select>
+    <textarea id="note" placeholder="What did you work on today?"></textarea>
+    <button onclick="saveEntry()">Save Session</button>
+  </div>
+</div>
+
+<script>
+let editingIndex = null;
+function getEntries(){ return JSON.parse(localStorage.getItem("bjj_log_simple")||"[]"); }
+function saveEntries(entries){ localStorage.setItem("bjj_log_simple", JSON.stringify(entries)); }
+
+// Modal
+function openModal(tag='', note='', index=null){
+  document.getElementById("modal").style.display="block";
+  document.getElementById("tag").value = tag;
+  document.getElementById("note").value = note;
+  editingIndex = index;
+}
+function closeModal(){ document.getElementById("modal").style.display="none"; editingIndex=null; }
+
+// Save or edit entry
+function saveEntry(){
+  const note = document.getElementById("note").value;
+  const tag = document.getElementById("tag").value;
+  if(!note) return;
+  const entries = getEntries();
+  if(editingIndex!==null){
+    entries[editingIndex] = { ...entries[editingIndex], note, tag };
+  } else {
+    entries.unshift({ date: new Date().toLocaleString(), tag, note });
+  }
+  saveEntries(entries);
+  closeModal();
+  render();
+}
+
+// Delete entry
+function deleteEntry(i){
+  const entries = getEntries();
+  entries.splice(i,1);
+  saveEntries(entries);
+  render();
+}
+
+// Render list
+function render(){
+  const log = document.getElementById("log");
+  const search = document.getElementById("search").value.toLowerCase();
+  const entries = getEntries();
+  log.innerHTML = "";
+  entries.filter(e => e.note.toLowerCase().includes(search) || e.tag.toLowerCase().includes(search))
+    .forEach((e,i)=>{
+      const div = document.createElement("div"); div.className="entry";
+      div.innerHTML = `
+        <div class="entry-info">
+          <div class="date">${e.date}</div>
+          <div class="tag ${e.tag.replace(/\s/g,'')}">${e.tag}</div>
+          <div>${e.note}</div>
+        </div>
+        <button class="edit-btn" onclick="openModal('${e.tag}','${e.note.replace(/'/g,"\\'")}',${i})">Edit</button>
+        <button class="delete-btn" onclick="deleteEntry(${i})">Delete</button>
+      `;
+      log.appendChild(div);
+    });
+}
+
+render();
+
+// Close modal if click outside
+window.onclick = function(event){
+  if(event.target==document.getElementById("modal")) closeModal();
+};
+</script>
+
+</body>
+</html>
